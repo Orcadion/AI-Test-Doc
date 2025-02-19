@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الدردشة الذكية</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        🤖 الدردشة الذكية
+        
+    </div>
+    <div class="chat-box" id="chat-box"></div>
+    <div class="chat-input">
+        <input type="text" id="user-input" placeholder="اكتب رسالتك هنا..." onkeydown="handleKeyDown(event)">
+        <button id="send-button" onclick="sendMessage()">إرسال</button>
+    </div>
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
