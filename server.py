@@ -4,9 +4,7 @@ from flask_cors import CORS
 import requests
 import os
 from dotenv import load_dotenv
-from waitress import serve
-
-
+from waitress import serve  # ✅ استيراد Waitress
 
 # تحميل مفتاح API
 load_dotenv()
@@ -47,6 +45,7 @@ def init_db():
     conn.close()
 
 init_db()
+
 @app.route('/chat_history', methods=['POST'])
 def chat_history():
     try:
@@ -109,7 +108,6 @@ def set_user():
     save_user(username)
     return jsonify({"message": f"✅ تم حفظ اسم المستخدم: {username}"})
 
-
 # 🔹 نقطة نهاية الدردشة
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -145,7 +143,6 @@ def chat():
         print(f"❌ خطأ أثناء معالجة الطلب: {e}")
         return jsonify({"error": "❌ حدث خطأ أثناء معالجة الطلب"}), 500
 
-
 # 🔹 دالة إرسال الطلب إلى `Gemini API`
 def generate_gemini_response(user_message):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
@@ -165,7 +162,7 @@ def generate_gemini_response(user_message):
         print(f"❌ خطأ أثناء طلب `Gemini API`: {e}")
         return "❌ حدث خطأ أثناء معالجة الطلب."
 
-# تشغيل السيرفر
+# ✅ تشغيل السيرفر باستخدام Waitress
 if __name__ == '__main__':
-    print("🚀 تشغيل السيرفر...")
-    app.run(host="0.0.0.0", port=10000)
+    print("🚀 تشغيل السيرفر باستخدام `Waitress`...")
+    serve(app, host="0.0.0.0", port=10000)
