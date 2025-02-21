@@ -274,4 +274,4 @@ def get_general_info(key):
 
 # 🚀 تشغيل السيرفر
 if __name__ == '__main__':
-    serve(app, host="0.0.0.0", port=8080)
+    serve(app, host="0.0.0.0", port=5000)
