@@ -165,4 +165,4 @@ def generate_gemini_response(user_message):
 # ✅ تشغيل السيرفر باستخدام Waitress
 if __name__ == '__main__':
     print("🚀 تشغيل السيرفر باستخدام `Waitress`...")
-    serve(app, host="0.0.0.0", port=10000)
+    app.run(host='0.0.0.0', port=8080)
