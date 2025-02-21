@@ -5,7 +5,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatBox = document.querySelector('.chat-box');
     const messageInput = document.querySelector('.message-input');
     const sendButton = document.querySelector('.send-button');
-    
+    const serverUrl = "https://ai-test-doc.onrender.com/send";
+    const loadingDiv = document.getElementById("loading");
+    const sendBtn = document.getElementById("send-btn");
+    const userInput = document.getElementById("user-input");
+
     // تحميل المحادثات المحفوظة
     window.onload = function() {
         const savedChat = localStorage.getItem('chat_history');
@@ -13,16 +17,16 @@ document.addEventListener("DOMContentLoaded", () => {
             chatBox.innerHTML = savedChat;
         }
     };
-    
+
     // إرسال الرسالة
     sendButton.addEventListener('click', () => {
         const message = messageInput.value;
         if (message.trim() === "") return;
-    
+
         chatBox.innerHTML += `<div class="user-message">${message}</div>`;
         messageInput.value = '';
         localStorage.setItem('chat_history', chatBox.innerHTML);
-    
+
         fetch('/send', {
             method: 'POST',
             headers: {
@@ -37,16 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .catch(error => console.error('خطأ في الاتصال بالخادم:', error));
     });
-    
-    fetch('https://ai-test-doc.onrender.com/chat_history', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message: userMessage })
-      });
 
-      
     // تحميل المحادثات السابقة عند التحميل
     loadChatHistory();
 
@@ -74,7 +69,8 @@ function sendMessage() {
     const sendBtn = document.getElementById("send-btn");
     const loadingDiv = document.getElementById("loading");
     
-    let isWaitingForResponse = false;
+    // تعريف واحد فقط للـ isWaitingForResponse
+    isWaitingForResponse = false;
     
     window.onload = function() {
         const savedChat = localStorage.getItem("chatHistory");
@@ -82,12 +78,12 @@ function sendMessage() {
             chatBox.innerHTML = savedChat;
             chatBox.scrollTop = chatBox.scrollHeight;
         }
-    }
-    
+    };
+
     function saveChat() {
         localStorage.setItem("chatHistory", chatBox.innerHTML);
     }
-    
+
     function addMessage(content, sender = "user") {
         const messageBubble = document.createElement("div");
         messageBubble.classList.add("message-bubble", sender);
@@ -96,21 +92,21 @@ function sendMessage() {
         chatBox.scrollTop = chatBox.scrollHeight;
         saveChat();
     }
-    
+
     sendBtn.addEventListener("click", () => {
-        if (isWaitingForResponse) return; // منع الإرسال أثناء الانتظار
-    
+        if (isWaitingForResponse) return;
+
         const message = userInput.value.trim();
         if (message) {
             addMessage(message, "user");
             userInput.value = "";
-    
+
             // تعطيل الكتابة أثناء الانتظار
             isWaitingForResponse = true;
             userInput.disabled = true;
             sendBtn.disabled = true;
             loadingDiv.style.display = "block";
-    
+
             fetch(serverUrl, {
                 method: "POST",
                 headers: {
@@ -132,7 +128,6 @@ function sendMessage() {
                 addMessage("⚠️ فشل الاتصال بالخادم!", "error");
             })
             .finally(() => {
-                // إعادة تفعيل الكتابة بعد استلام الرد
                 isWaitingForResponse = false;
                 userInput.disabled = false;
                 sendBtn.disabled = false;
@@ -141,16 +136,17 @@ function sendMessage() {
             });
         }
     });
-    
+
     userInput.addEventListener("keypress", (event) => {
         if (isWaitingForResponse) {
-            event.preventDefault(); // منع الكتابة أثناء الانتظار
+            event.preventDefault(); 
         } else if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
             sendBtn.click();
         }
     });
 }
+
 // دالة إضافة الرسالة
 function addMessage(text, className, align) {
     const chatBox = document.getElementById("chat-box");
