@@ -12,8 +12,15 @@ document.addEventListener("DOMContentLoaded", () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ message: userMessage })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Response:', data.response);
+      })
+      .catch(error => {
+        console.error('Error:', error);
       });
-
+      
       
     // تحميل المحادثات السابقة عند التحميل
     loadChatHistory();
