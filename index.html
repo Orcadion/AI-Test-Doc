@@ -20,7 +20,9 @@
             <button id="send-btn">إرسال</button>
         </div>
     </div>
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    
     <script>
         const serverUrl = "http://127.0.0.1:8080/send"; // تعديل المسار ليتوافق مع السيرفر
         const chatBox = document.getElementById("chat-box");
