@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function sendMessage() {
     if (isWaitingForResponse) return; // منع الإرسال إذا كان هناك رد قيد الانتظار
 
-    const serverUrl = "http://127.0.0.1:5000/send"; // تعديل المسار ليتوافق مع السيرفر
+    const serverUrl = "https://ai-test-doc.onrender.com/send";
     const chatBox = document.getElementById("chat-box");
     const userInput = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
