@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function sendMessage() {
     if (isWaitingForResponse) return; // منع الإرسال إذا كان هناك رد قيد الانتظار
 
-    const serverUrl = "http://127.0.0.1:8080/send"; // تعديل المسار ليتوافق مع السيرفر
+    const serverUrl = "http://127.0.0.1:5000/send"; // تعديل المسار ليتوافق مع السيرفر
     const chatBox = document.getElementById("chat-box");
     const userInput = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
