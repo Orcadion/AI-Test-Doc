@@ -1,7 +1,7 @@
 services:
   - type: web
-    name: AI-Test-Doc
+    name: ai-test-doc
     env: python
+    region: oregon
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python server.py"
-    plan: free
