@@ -243,19 +243,12 @@ def save_info():
 # 🔹 نقطة نهاية لجلب المحادثات السابقة
 @app.route('/chat_history', methods=['POST'])
 def chat_history():
-    try:
-        data = request.get_json()
-        user = data.get("user", "").strip()
+    data = request.get_json()
+    user_message = data.get('message')
+    # هنا ضع منطق الذكاء الاصطناعي للرد
+    response = {"reply": "تم استقبال رسالتك: " + user_message}
+    return jsonify(response)
 
-        if not user:
-            return jsonify({"error": "❌ اسم المستخدم مطلوب!"}), 400
-
-        history = get_chat_history(user)
-        return jsonify({"history": history})
-
-    except Exception as e:
-        print(f"❌ خطأ أثناء جلب المحادثات السابقة: {e}")
-        return jsonify({"error": "❌ حدث خطأ أثناء جلب المحادثات"}), 500
 # 🔹 دالة لحفظ المعلومات العامة
 def save_general_info(key, value):
     conn = get_db_connection()
