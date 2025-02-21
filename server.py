@@ -106,40 +106,57 @@ def get_user_id():
 
 # 🔥 دالة الاتصال بـ `Gemini API`
 def generate_gemini_response(user_message, chat_history=[]):
+    
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     context = ""
 
+    # ✅ إضافة المعرفة المبدئية
     initial_knowledge = """
     - انا اعمل تيست تيكنشن
     """
 
-    for chat in chat_history[-5:]:
+  
+    # دمج المعرفة مع المحادثات السابقة
+    for chat in chat_history[-5:]:  # أخذ آخر 5 رسائل فقط للحفاظ على التركيز
         context += f"أنت: {chat['message']}\n"
         context += f"مساعد: {chat['response']}\n"
+        context += f"هذه بعض المعلومات المبدئية:\n{initial_knowledge}\n"
 
     context += f"أنت: {user_message}\nمساعد: "
 
+    # ✅ بناء البيانات بالطريقة الصحيحة
     data = {
-        "prompt": {
-            "text": f"تصرف كأنك صديق . المحادثة السابقة كانت: {context}"
-        },
-        "temperature": 0.7,
-        "maxOutputTokens": 100
+        "contents": [{
+            "parts": [{"text": f"تصرف كأنك صديق . المحادثة السابقة كانت: {context}"}]
+        }]
     }
 
     try:
         response = requests.post(url, headers=headers, json=data)
-        response_data = response.json()
+        
+        # 🔍 طباعة استجابة `Gemini API` للتحقق
+        print("🌐 Status Code:", response.status_code)
+        print("📥 Response:", response.text)
 
+        response_data = response.json()
+        
+        # ✅ استخراج الرد بطريقة صحيحة
         if "candidates" in response_data and len(response_data["candidates"]) > 0:
-            return response_data["candidates"][0]["output"]
+            if "content" in response_data["candidates"][0] and \
+               "parts" in response_data["candidates"][0]["content"] and \
+               len(response_data["candidates"][0]["content"]["parts"]) > 0:
+                
+                return response_data["candidates"][0]["content"]["parts"][0]["text"]
+            else:
+                return "❌ لم أتمكن من توليد رد."
         else:
-            return "❌ لم أتمكن من توليد رد."
+            return "❌❌ لم أتمكن من توليد رد."
 
     except Exception as e:
         print(f"❌ خطأ أثناء طلب `Gemini API`: {e}")
         return "❌ حدث خطأ أثناء معالجة الطلب."
+
 
 # 🔹 نقطة نهاية لحفظ المستخدم
 @app.route('/set_user', methods=['POST'])
