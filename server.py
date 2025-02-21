@@ -183,9 +183,15 @@ def styles():
 def get0_chat_history():
     return send_from_directory(os.getcwd(), 'chat_history.db')
 
+@app.route('/server.py')
+def get0_server():
+    return send_from_directory(os.getcwd(), 'server.py')
+
+
 @app.route('/.env')
 def get0_env():
     return send_from_directory(os.getcwd(), '.env')
+
 
 
 @app.route('/send', methods=['POST'])
