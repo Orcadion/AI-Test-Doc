@@ -1,12 +1,10 @@
 import sqlite3
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session, send_from_directory
 from flask_cors import CORS
 import requests
 import os
 from dotenv import load_dotenv
 from waitress import serve
-from flask import Flask, send_from_directory
-from flask import Flask, render_template, request, jsonify, session
 from flask_session import Session
 
 # 🔑 تحميل مفتاح API
@@ -20,7 +18,11 @@ if not GEMINI_API_KEY:
 app = Flask(__name__)
 CORS(app)
 app.secret_key = os.urandom(24)  # مفتاح سري للجلسات
+
+# ✅ إعدادات الجلسة
 app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = False  # الجلسة لا تنتهي بعد غلق المتصفح
+app.config['SESSION_USE_SIGNER'] = True  # توقيع الجلسة لمزيد من الأمان
 Session(app)
 
 DB_PATH = "chat_history.db"
@@ -51,6 +53,7 @@ def init_db():
     conn.close()
 
 init_db()
+
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -68,11 +71,9 @@ def save_chat(user, message, response):
     finally:
         conn.close()
 
-
 # 🔹 دالة لاسترجاع المحادثات السابقة
 def get_chat_history(user):
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute('PRAGMA journal_mode=WAL;')
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT message, response FROM chats WHERE user = ? ORDER BY timestamp ASC", (user,))
     chats = cursor.fetchall()
@@ -81,7 +82,7 @@ def get_chat_history(user):
 
 # 🔹 دالة للتحقق من وجود المستخدم
 def get_user(username):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
     user = cursor.fetchone()
@@ -90,11 +91,55 @@ def get_user(username):
 
 # 🔹 دالة لحفظ المستخدم
 def save_user(username):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("INSERT OR IGNORE INTO users (username) VALUES (?)", (username,))
     conn.commit()
     conn.close()
+
+# 🔹 دالة للحصول على user_id من الجلسة
+def get_user_id():
+    if 'user_id' not in session:
+        session['user_id'] = os.urandom(8).hex()  # مُعرّف فريد لكل مستخدم
+        session.modified = True  # تأكيد حفظ الجلسة
+    return session['user_id']
+
+# 🔥 دالة الاتصال بـ `Gemini API`
+def generate_gemini_response(user_message, chat_history=[]):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    headers = {"Content-Type": "application/json"}
+    context = ""
+
+    initial_knowledge = """
+    - انا اعمل تيست تيكنشن
+    """
+
+    for chat in chat_history[-5:]:
+        context += f"أنت: {chat['message']}\n"
+        context += f"مساعد: {chat['response']}\n"
+
+    context += f"أنت: {user_message}\nمساعد: "
+
+    data = {
+        "prompt": {
+            "text": f"تصرف كأنك صديق . المحادثة السابقة كانت: {context}"
+        },
+        "temperature": 0.7,
+        "maxOutputTokens": 100
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response_data = response.json()
+
+        if "candidates" in response_data and len(response_data["candidates"]) > 0:
+            return response_data["candidates"][0]["output"]
+        else:
+            return "❌ لم أتمكن من توليد رد."
+
+    except Exception as e:
+        print(f"❌ خطأ أثناء طلب `Gemini API`: {e}")
+        return "❌ حدث خطأ أثناء معالجة الطلب."
 
 # 🔹 نقطة نهاية لحفظ المستخدم
 @app.route('/set_user', methods=['POST'])
@@ -107,73 +152,9 @@ def set_user():
 
     save_user(username)
     return jsonify({"message": f"✅ تم حفظ اسم المستخدم: {username}"})
-# 🔥 تعديل دالة توليد الرد
 
-
-
-# 🔥 دالة الاتصال بـ `Gemini API`
-    # 🔥 دالة الاتصال بـ `Gemini API`
-def generate_gemini_response(user_message, chat_history=[]):
-    
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    headers = {"Content-Type": "application/json"}
-    context = ""
-
-    # ✅ إضافة المعرفة المبدئية
-    initial_knowledge = """
-    - انا اعمل تيست تيكنشن
-    """
-
-  
-    # دمج المعرفة مع المحادثات السابقة
-    for chat in chat_history[-5:]:  # أخذ آخر 5 رسائل فقط للحفاظ على التركيز
-        context += f"أنت: {chat['message']}\n"
-        context += f"مساعد: {chat['response']}\n"
-        context += f"هذه بعض المعلومات المبدئية:\n{initial_knowledge}\n"
-
-    context += f"أنت: {user_message}\nمساعد: "
-
-    # ✅ بناء البيانات بالطريقة الصحيحة
-    data = {
-        "contents": [{
-            "parts": [{"text": f"تصرف كأنك صديق . المحادثة السابقة كانت: {context}"}]
-        }]
-    }
-
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        
-        # 🔍 طباعة استجابة `Gemini API` للتحقق
-        print("🌐 Status Code:", response.status_code)
-        print("📥 Response:", response.text)
-
-        response_data = response.json()
-        
-        # ✅ استخراج الرد بطريقة صحيحة
-        if "candidates" in response_data and len(response_data["candidates"]) > 0:
-            if "content" in response_data["candidates"][0] and \
-               "parts" in response_data["candidates"][0]["content"] and \
-               len(response_data["candidates"][0]["content"]["parts"]) > 0:
-                
-                return response_data["candidates"][0]["content"]["parts"][0]["text"]
-            else:
-                return "❌ لم أتمكن من توليد رد."
-        else:
-            return "❌❌ لم أتمكن من توليد رد."
-
-    except Exception as e:
-        print(f"❌ خطأ أثناء طلب `Gemini API`: {e}")
-        return "❌ حدث خطأ أثناء معالجة الطلب."
-
-# 🔹 نقطة نهاية لإرسال الرسالة
-# 🔹 نقطة نهاية لإرسال الرسالة
-def get_user_id():
-    if 'user_id' not in session:
-        session['user_id'] = os.urandom(8).hex()  # مُعرّف فريد لكل مستخدم
-    return session['user_id']
 @app.route('/')
 def home():
-    # إنشاء معرّف فريد للمستخدم
     get_user_id()  # تأكد من وجود user_id في الجلسة
     return send_from_directory(os.getcwd(), 'index.html')
 
@@ -189,60 +170,28 @@ def styles():
 def get0_chat_history():
     return send_from_directory(os.getcwd(), 'chat_history.db')
 
-@app.route('/server.py')
-def get0_server():
-    return send_from_directory(os.getcwd(), 'server.py')
-
-
-@app.route('/.env')
-def get0_env():
-    return send_from_directory(os.getcwd(), '.env')
-
-
 @app.route('/send', methods=['POST'])
 def send_message():
     try:
         data = request.get_json()
-        user_id = get_user_id()  # جلب الـ user_id الفريد من الجلسة
+        user_id = get_user_id()
         message = data.get("message", "").strip()
 
         if not message:
             return jsonify({"error": "❌ الرسالة فارغة!"}), 400
 
-        # 🔹 جلب المحادثات السابقة لهذا المستخدم
         chat_history = get_chat_history(user_id)
-
-        # 🔥 توليد رد من الذكاء الاصطناعي باستخدام السياق
         response_text = generate_gemini_response(message, chat_history)
 
-        # ✅ التأكد من أن الرد ليس فارغًا
         if not response_text or response_text.strip() == "":
             response_text = "❌ لم أتمكن من توليد رد."
 
-        # 🔹 حفظ المحادثة
         save_chat(user_id, message, response_text)
-
         return jsonify({"response": response_text})
 
     except Exception as e:
         print(f"❌ خطأ أثناء معالجة الطلب: {e}")
         return jsonify({"error": "❌ حدث خطأ أثناء معالجة الطلب"}), 500
-
-# 🔹 دوال مساعدة لتخزين واسترجاع المحادثات
-def save_chat(user_id, message, response):
-    # يمكنك تخزين المحادثات في قاعدة بيانات أو في ملف نصي لكل مستخدم
-    with open(f"chat_{user_id}.txt", "a", encoding="utf-8") as f:
-        f.write(f"User: {message}\nBot: {response}\n")
-def get_chat_history(user_id):
-    try:
-        with open(f"chat_{user_id}.txt", "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        return
-# 🔹 نقطة نهاية لحفظ المعلومات العامة
-
-
-
 
 @app.route('/save_info', methods=['POST'])
 def save_info():
@@ -256,18 +205,6 @@ def save_info():
     save_general_info(key, value)
     return jsonify({"message": f"✅ تم حفظ المعلومات: {key} = {value}"})
 
-
-
-# 🔹 نقطة نهاية لجلب المحادثات السابقة
-@app.route('/chat_history', methods=['POST'])
-def chat_history():
-    data = request.get_json()
-    user_message = data.get('message')
-    # هنا ضع منطق الذكاء الاصطناعي للرد
-    response = {"reply": "تم استقبال رسالتك: " + user_message}
-    return jsonify(response)
-
-# 🔹 دالة لحفظ المعلومات العامة
 def save_general_info(key, value):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -281,14 +218,6 @@ def save_general_info(key, value):
     cursor.execute("INSERT OR REPLACE INTO general_info (key, value) VALUES (?, ?)", (key, value))
     conn.commit()
     conn.close()
-# 🔹 دالة لاسترجاع المعلومات العامة
-def get_general_info(key):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT value FROM general_info WHERE key = ?", (key,))
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else None
 
 # 🚀 تشغيل السيرفر
 if __name__ == '__main__':
