@@ -175,7 +175,7 @@ def get_user_id():
 def home():
     # إنشاء معرّف فريد للمستخدم
     get_user_id()  # تأكد من وجود user_id في الجلسة
-    return render_template('index.html')
+    return send_from_directory(os.getcwd(), 'index.html')
 
 @app.route('/script.js')
 def script():
