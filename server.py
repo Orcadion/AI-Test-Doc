@@ -117,11 +117,7 @@ def generate_gemini_response(user_message, chat_history=[]):
 
     # ✅ إضافة المعرفة المبدئية
     initial_knowledge = """
-    - اسمي أحمد.
-    - أنا مطور ألعاب.
-    - أحب البرمجة وأستمتع بتعلم أشياء جديدة.
-    - أعيش في القاهرة.
-    - هدفي تطوير ذكاء اصطناعي مميز.
+    - انا اعمل تيست تيكنشن
     """
 
   
@@ -136,7 +132,7 @@ def generate_gemini_response(user_message, chat_history=[]):
     # ✅ بناء البيانات بالطريقة الصحيحة
     data = {
         "contents": [{
-            "parts": [{"text": f"تصرف كأنك صديق ودود. المحادثة السابقة كانت: {context}"}]
+            "parts": [{"text": f"تصرف كأنك صديق . المحادثة السابقة كانت: {context}"}]
         }]
     }
 
