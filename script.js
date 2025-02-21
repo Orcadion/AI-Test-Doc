@@ -6,6 +6,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const userInput = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
 
+    fetch('https://ai-test-doc.onrender.com/chat_history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message: userMessage })
+      });
+
+      
     // تحميل المحادثات السابقة عند التحميل
     loadChatHistory();
 
