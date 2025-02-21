@@ -90,7 +90,6 @@ def get_user_id():
 
 # 🔥 دالة الاتصال بـ `Gemini API`
 def generate_gemini_response(user_message, chat_history=[]):
-    
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     context = ""
@@ -100,12 +99,10 @@ def generate_gemini_response(user_message, chat_history=[]):
     - انا اعمل تيست تيكنشن
     """
 
-  
     # دمج المعرفة مع المحادثات السابقة
     for chat in chat_history[-5:]:  # أخذ آخر 5 رسائل فقط للحفاظ على التركيز
         context += f"أنت: {chat['message']}\n"
         context += f"مساعد: {chat['response']}\n"
-        context += f"هذه بعض المعلومات المبدئية:\n{initial_knowledge}\n"
 
     context += f"أنت: {user_message}\nمساعد: "
 
@@ -118,76 +115,16 @@ def generate_gemini_response(user_message, chat_history=[]):
 
     try:
         response = requests.post(url, headers=headers, json=data)
-        
-        # 🔍 طباعة استجابة `Gemini API` للتحقق
-        print("🌐 Status Code:", response.status_code)
-        print("📥 Response:", response.text)
-
         response_data = response.json()
         
         # ✅ استخراج الرد بطريقة صحيحة
         if "candidates" in response_data and len(response_data["candidates"]) > 0:
-            if "content" in response_data["candidates"][0] and \
-               "parts" in response_data["candidates"][0]["content"] and \
-               len(response_data["candidates"][0]["content"]["parts"]) > 0:
-                
-                return response_data["candidates"][0]["content"]["parts"][0]["text"]
-            else:
-                return "❌ لم أتمكن من توليد رد."
+            return response_data["candidates"][0]["content"]["parts"][0]["text"]
         else:
-            return "❌❌ لم أتمكن من توليد رد."
-
+            return "❌ لم أتمكن من توليد رد."
     except Exception as e:
         print(f"❌ خطأ أثناء طلب `Gemini API`: {e}")
         return "❌ حدث خطأ أثناء معالجة الطلب."
-
-# 🔹 نقطة نهاية لحفظ المعلومات العامة
-@app.route('/save_info', methods=['POST'])
-def save_info():
-    data = request.get_json()
-    key = data.get("key", "").strip().lower()
-    value = data.get("value", "").strip()
-
-    if not key or not value:
-        return jsonify({"error": "❌ يجب إدخال المفتاح والقيمة!"}), 400
-
-    save_general_info(key, value)
-    return jsonify({"message": f"✅ تم حفظ المعلومات: {key} = {value}"})
-
-
-
-# 🔹 نقطة نهاية لجلب المحادثات السابقة
-@app.route('/chat_history', methods=['POST'])
-def chat_history():
-    data = request.get_json()
-    user_message = data.get('message')
-    # هنا ضع منطق الذكاء الاصطناعي للرد
-    response = {"reply": "تم استقبال رسالتك: " + user_message}
-    return jsonify(response)
-
-# 🔹 دالة لحفظ المعلومات العامة
-def save_general_info(key, value):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS general_info (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            key TEXT UNIQUE NOT NULL,
-            value TEXT NOT NULL
-        )
-    ''')
-    cursor.execute("INSERT OR REPLACE INTO general_info (key, value) VALUES (?, ?)", (key, value))
-    conn.commit()
-    conn.close()
-# 🔹 دالة لاسترجاع المعلومات العامة
-def get_general_info(key):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT value FROM general_info WHERE key = ?", (key,))
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else None
-
 
 # 🔹 نقطة نهاية لاسترجاع المحادثات السابقة عند تحميل الصفحة
 @app.route('/get_history', methods=['GET'])
@@ -219,6 +156,19 @@ def send_message():
     except Exception as e:
         print(f"❌ خطأ أثناء معالجة الطلب: {e}")
         return jsonify({"error": "❌ حدث خطأ أثناء معالجة الطلب"}), 500
+
+# 🔹 نقطة نهاية لتحميل الملفات الثابتة
+@app.route('/')
+def home():
+    return send_from_directory(os.getcwd(), 'index.html')
+
+@app.route('/script.js')
+def script():
+    return send_from_directory(os.getcwd(), 'script.js')
+
+@app.route('/styles.css')
+def styles():
+    return send_from_directory(os.getcwd(), 'styles.css')
 
 # 🚀 تشغيل السيرفر
 if __name__ == '__main__':
