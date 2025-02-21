@@ -12,15 +12,8 @@ document.addEventListener("DOMContentLoaded", () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ message: userMessage })
-      })
-      .then(response => response.json())
-      .then(data => {
-        console.log('Response:', data.response);
-      })
-      .catch(error => {
-        console.error('Error:', error);
       });
-      
+
       
     // تحميل المحادثات السابقة عند التحميل
     loadChatHistory();
@@ -43,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function sendMessage() {
     if (isWaitingForResponse) return; // منع الإرسال إذا كان هناك رد قيد الانتظار
 
-    const serverUrl = "https://ai-test-doc.onrender.com/chat_history"; // تعديل المسار ليتوافق مع السيرفر
+    const serverUrl = "http://127.0.0.1:5000/send"; // تعديل المسار ليتوافق مع السيرفر
     const chatBox = document.getElementById("chat-box");
     const userInput = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
