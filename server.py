@@ -6,7 +6,8 @@ import os
 from dotenv import load_dotenv
 from waitress import serve
 from flask import Flask, send_from_directory
-
+from flask import Flask, render_template, request, jsonify, session
+from flask_session import Session
 
 # 🔑 تحميل مفتاح API
 load_dotenv()
@@ -18,6 +19,9 @@ if not GEMINI_API_KEY:
 # 🚀 إعداد التطبيق
 app = Flask(__name__)
 CORS(app)
+app.secret_key = os.urandom(24)  # مفتاح سري للجلسات
+app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
 
 DB_PATH = "chat_history.db"
 
@@ -163,9 +167,15 @@ def generate_gemini_response(user_message, chat_history=[]):
 
 # 🔹 نقطة نهاية لإرسال الرسالة
 # 🔹 نقطة نهاية لإرسال الرسالة
+def get_user_id():
+    if 'user_id' not in session:
+        session['user_id'] = os.urandom(8).hex()  # مُعرّف فريد لكل مستخدم
+    return session['user_id']
 @app.route('/')
 def home():
-    return send_from_directory(os.getcwd(), 'index.html')
+    # إنشاء معرّف فريد للمستخدم
+    get_user_id()  # تأكد من وجود user_id في الجلسة
+    return render_template('index.html')
 
 @app.route('/script.js')
 def script():
@@ -189,22 +199,18 @@ def get0_env():
     return send_from_directory(os.getcwd(), '.env')
 
 
-
 @app.route('/send', methods=['POST'])
 def send_message():
     try:
         data = request.get_json()
-        user = data.get("user", "User").strip()
+        user_id = get_user_id()  # جلب الـ user_id الفريد من الجلسة
         message = data.get("message", "").strip()
 
         if not message:
             return jsonify({"error": "❌ الرسالة فارغة!"}), 400
 
-        # 🔹 التحقق من وجود المستخدم وحفظه
-        save_user(user)
-
         # 🔹 جلب المحادثات السابقة لهذا المستخدم
-        chat_history = get_chat_history(user)
+        chat_history = get_chat_history(user_id)
 
         # 🔥 توليد رد من الذكاء الاصطناعي باستخدام السياق
         response_text = generate_gemini_response(message, chat_history)
@@ -214,14 +220,30 @@ def send_message():
             response_text = "❌ لم أتمكن من توليد رد."
 
         # 🔹 حفظ المحادثة
-        save_chat(user, message, response_text)
+        save_chat(user_id, message, response_text)
 
         return jsonify({"response": response_text})
 
     except Exception as e:
         print(f"❌ خطأ أثناء معالجة الطلب: {e}")
         return jsonify({"error": "❌ حدث خطأ أثناء معالجة الطلب"}), 500
+
+# 🔹 دوال مساعدة لتخزين واسترجاع المحادثات
+def save_chat(user_id, message, response):
+    # يمكنك تخزين المحادثات في قاعدة بيانات أو في ملف نصي لكل مستخدم
+    with open(f"chat_{user_id}.txt", "a", encoding="utf-8") as f:
+        f.write(f"User: {message}\nBot: {response}\n")
+def get_chat_history(user_id):
+    try:
+        with open(f"chat_{user_id}.txt", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return
 # 🔹 نقطة نهاية لحفظ المعلومات العامة
+
+
+
+
 @app.route('/save_info', methods=['POST'])
 def save_info():
     data = request.get_json()
