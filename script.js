@@ -2,10 +2,42 @@ let isWaitingForResponse = false;
 let username = localStorage.getItem("username") || "User";
 
 document.addEventListener("DOMContentLoaded", () => {
-    const chatBox = document.getElementById("chat-box");
-    const userInput = document.getElementById("user-input");
-    const sendBtn = document.getElementById("send-btn");
-
+    const chatBox = document.querySelector('.chat-box');
+    const messageInput = document.querySelector('.message-input');
+    const sendButton = document.querySelector('.send-button');
+    
+    // تحميل المحادثات المحفوظة
+    window.onload = function() {
+        const savedChat = localStorage.getItem('chat_history');
+        if (savedChat) {
+            chatBox.innerHTML = savedChat;
+        }
+    };
+    
+    // إرسال الرسالة
+    sendButton.addEventListener('click', () => {
+        const message = messageInput.value;
+        if (message.trim() === "") return;
+    
+        chatBox.innerHTML += `<div class="user-message">${message}</div>`;
+        messageInput.value = '';
+        localStorage.setItem('chat_history', chatBox.innerHTML);
+    
+        fetch('/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: message })
+        })
+        .then(response => response.json())
+        .then(data => {
+            chatBox.innerHTML += `<div class="bot-response">${data.response}</div>`;
+            localStorage.setItem('chat_history', chatBox.innerHTML);
+        })
+        .catch(error => console.error('خطأ في الاتصال بالخادم:', error));
+    });
+    
     fetch('https://ai-test-doc.onrender.com/chat_history', {
         method: 'POST',
         headers: {
