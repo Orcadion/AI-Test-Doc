@@ -81,23 +81,6 @@ def get_chat_history(user):
     conn.close()
     return [{"message": msg, "response": resp} for msg, resp in chats]
 
-# 🔹 دالة للتحقق من وجود المستخدم
-def get_user(username):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
-    user = cursor.fetchone()
-    conn.close()
-    return user
-
-# 🔹 دالة لحفظ المستخدم
-def save_user(username):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO users (username) VALUES (?)", (username,))
-    conn.commit()
-    conn.close()
-
 # 🔹 دالة للحصول على user_id من الجلسة
 def get_user_id():
     if 'user_id' not in session:
@@ -158,58 +141,7 @@ def generate_gemini_response(user_message, chat_history=[]):
         print(f"❌ خطأ أثناء طلب `Gemini API`: {e}")
         return "❌ حدث خطأ أثناء معالجة الطلب."
 
-
-# 🔹 نقطة نهاية لحفظ المستخدم
-@app.route('/set_user', methods=['POST'])
-def set_user():
-    data = request.get_json()
-    username = data.get("username", "").strip()
-
-    if not username:
-        return jsonify({"error": "❌ اسم المستخدم مطلوب!"}), 400
-
-    save_user(username)
-    return jsonify({"message": f"✅ تم حفظ اسم المستخدم: {username}"})
-
-@app.route('/')
-def home():
-    get_user_id()  # تأكد من وجود user_id في الجلسة
-    return send_from_directory(os.getcwd(), 'index.html')
-
-@app.route('/script.js')
-def script():
-    return send_from_directory(os.getcwd(), 'script.js')
-
-@app.route('/styles.css')
-def styles():
-    return send_from_directory(os.getcwd(), 'styles.css')
-
-@app.route('/chat_history.db')
-def get_chat_history_db():
-    return send_from_directory(os.getcwd(), 'chat_history.db')
-
-@app.route('/send', methods=['POST'])
-def send_message():
-    try:
-        data = request.get_json()
-        user_id = get_user_id()
-        message = data.get("message", "").strip()
-
-        if not message:
-            return jsonify({"error": "❌ الرسالة فارغة!"}), 400
-
-        chat_history = get_chat_history(user_id)
-        response_text = generate_gemini_response(message, chat_history)
-
-        if not response_text or response_text.strip() == "":
-            response_text = "❌ لم أتمكن من توليد رد."
-
-        save_chat(user_id, message, response_text)
-        return jsonify({"response": response_text})
-
-    except Exception as e:
-        print(f"❌ خطأ أثناء معالجة الطلب: {e}")
-        return jsonify({"error": "❌ حدث خطأ أثناء معالجة الطلب"}), 500
+# 🔹 نقطة نهاية لحفظ المعلومات العامة
 @app.route('/save_info', methods=['POST'])
 def save_info():
     data = request.get_json()
@@ -255,6 +187,39 @@ def get_general_info(key):
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else None
+
+
+# 🔹 نقطة نهاية لاسترجاع المحادثات السابقة عند تحميل الصفحة
+@app.route('/get_history', methods=['GET'])
+def get_history():
+    user_id = get_user_id()
+    chat_history = get_chat_history(user_id)
+    return jsonify(chat_history)
+
+# 🔹 نقطة نهاية لإرسال الرسائل
+@app.route('/send', methods=['POST'])
+def send_message():
+    try:
+        data = request.get_json()
+        user_id = get_user_id()
+        message = data.get("message", "").strip()
+
+        if not message:
+            return jsonify({"error": "❌ الرسالة فارغة!"}), 400
+
+        chat_history = get_chat_history(user_id)
+        response_text = generate_gemini_response(message, chat_history)
+
+        if not response_text or response_text.strip() == "":
+            response_text = "❌ لم أتمكن من توليد رد."
+
+        save_chat(user_id, message, response_text)
+        return jsonify({"response": response_text})
+
+    except Exception as e:
+        print(f"❌ خطأ أثناء معالجة الطلب: {e}")
+        return jsonify({"error": "❌ حدث خطأ أثناء معالجة الطلب"}), 500
+
 # 🚀 تشغيل السيرفر
 if __name__ == '__main__':
     serve(app, host="0.0.0.0", port=5000)
