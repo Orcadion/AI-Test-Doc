@@ -1,0 +1,6 @@
+Flask
+Flask-Cors
+requests
+waitress
+dotenv
+sqlite3
