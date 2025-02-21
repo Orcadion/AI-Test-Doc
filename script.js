@@ -1,283 +1,158 @@
 let isWaitingForResponse = false;
 let username = localStorage.getItem("username") || "User";
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
     const chatBox = document.getElementById("chat-box");
     const userInput = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
 
-    let isWaitingForResponse = false;
-    let username = localStorage.getItem("username") || "User";
+    // تحميل المحادثات السابقة عند التحميل
+    loadChatHistory();
 
-    // 🔹 دالة لإضافة الرسائل بتنسيق الفقاعات
-    function addMessage(text, isUser) {
-        if (!text) return; // منع إضافة رسائل فارغة
+    // إرسال الرسالة عند الضغط على زر الإرسال
+    sendBtn.addEventListener("click", () => {
+        sendMessage();
+    });
 
-        const messageDiv = document.createElement("div");
-        messageDiv.classList.add("chat-bubble", isUser ? "user-message" : "bot-message");
-        messageDiv.textContent = text;
-
-        chatBox.appendChild(messageDiv);
-        chatBox.scrollTop = chatBox.scrollHeight; // تمرير للأحدث تلقائيًا
-    }
-
-    // 🔹 تحميل المحادثات السابقة عند فتح الصفحة
-    async function loadChatHistory() {
-        try {
-            const response = await fetch("http://127.0.0.1:5000/chat_history", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ user: username })
-            });
-
-            const data = await response.json();
-            if (data.history && data.history.length > 0) {
-                data.history.forEach(chat => {
-                    addMessage(chat.message, true);  // رسائل المستخدم باللون الأزرق
-                    addMessage(chat.response, false); // ردود الذكاء الاصطناعي باللون الرمادي
-                });
-            } else {
-                console.log("🚀 لا توجد محادثات سابقة");
-            }
-        } catch (error) {
-            console.error("❌ خطأ في تحميل المحادثة:", error);
-        }
-    }
-
-    // 🔹 إرسال الرسالة عند الضغط على زر الإرسال
-    sendBtn.addEventListener("click", sendMessage);
-    
-    // 🔹 إرسال الرسالة عند الضغط على "Enter"
-    userInput.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" && !isWaitingForResponse) {
+    // إرسال الرسالة عند الضغط على Enter
+    userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
             sendMessage();
         }
     });
-
-    // 🔹 دالة إرسال الرسالة إلى السيرفر ومعالجة الرد
-    async function sendMessage() {
-        if (isWaitingForResponse) return;
-
-        let message = userInput.value.trim();
-        if (!message) return;
-
-        addMessage(message, true); // عرض رسالة المستخدم في الفقاعة الزرقاء
-        userInput.value = "";
-        isWaitingForResponse = true;
-        toggleSendButton(true);
-
-        try {
-            const response = await fetch("http://127.0.0.1:5000/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ user: username, message })
-            });
-
-            const data = await response.json();
-            if (data.response) {
-                addMessage(data.response, false); // عرض رد الذكاء الاصطناعي في الفقاعة الرمادية
-            }
-        } catch (error) {
-            addMessage("⚠️ فشل الاتصال بالخادم!", false);
-            console.error("❌ خطأ في الاتصال بالسيرفر:", error);
-        } finally {
-            isWaitingForResponse = false;
-            toggleSendButton(false);
-        }
-    }
-
-    // 🔹 تعطيل أو تفعيل زر الإرسال أثناء انتظار الرد
-    function toggleSendButton(isWaiting) {
-        sendBtn.disabled = isWaiting;
-        sendBtn.innerText = isWaiting ? "انتظر..." : "إرسال";
-    }
-
-    // 🔹 تحميل المحادثة عند فتح الصفحة
-    await loadChatHistory();
 });
 
-
-
-
-function handleKeyDown(event) {
-    if (event.key === "Enter" && !isWaitingForResponse) {
-        sendMessage();
-    }
-}
-
+// دالة إرسال الرسالة
 function sendMessage() {
-    if (isWaitingForResponse) return;
+    if (isWaitingForResponse) return; // منع الإرسال إذا كان هناك رد قيد الانتظار
 
+    const serverUrl = "http://127.0.0.1:8080/send"; // تعديل المسار ليتوافق مع السيرفر
+    const chatBox = document.getElementById("chat-box");
     const userInput = document.getElementById("user-input");
-    let message = userInput.value.trim();
-    if (message === "") return;
-
-    userInput.value = "";
-    userInput.disabled = true; // منع المستخدم من الكتابة أثناء معالجة الرد
-    toggleSendButton(true);
+    const sendBtn = document.getElementById("send-btn");
+    const loadingDiv = document.getElementById("loading");
     
-    addMessage(message, "user-message", "right");
-
-    fetch("http://127.0.0.1:5000/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: username, message: message })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.response.includes("تم حفظ اسمك")) {
-            username = data.response.split(" ")[1]; // استخراج الاسم
-            localStorage.setItem("username", username);
+    let isWaitingForResponse = false;
+    
+    window.onload = function() {
+        const savedChat = localStorage.getItem("chatHistory");
+        if (savedChat) {
+            chatBox.innerHTML = savedChat;
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
-        addMessage(data.response, "bot-message", "left");
-    })
-    .catch(() => {
-        addMessage("⚠️ فشل الاتصال بالخادم!", "error-message", "left");
-    })
-    .finally(() => {
-        isWaitingForResponse = false;
-        userInput.disabled = false;
-        userInput.focus(); // إبقاء المؤشر في مربع الإدخال بعد الرد
-        toggleSendButton(false);
+    }
+    
+    function saveChat() {
+        localStorage.setItem("chatHistory", chatBox.innerHTML);
+    }
+    
+    function addMessage(content, sender = "user") {
+        const messageBubble = document.createElement("div");
+        messageBubble.classList.add("message-bubble", sender);
+        messageBubble.innerHTML = content;
+        chatBox.appendChild(messageBubble);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        saveChat();
+    }
+    
+    sendBtn.addEventListener("click", () => {
+        if (isWaitingForResponse) return; // منع الإرسال أثناء الانتظار
+    
+        const message = userInput.value.trim();
+        if (message) {
+            addMessage(message, "user");
+            userInput.value = "";
+    
+            // تعطيل الكتابة أثناء الانتظار
+            isWaitingForResponse = true;
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+            loadingDiv.style.display = "block";
+    
+            fetch(serverUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ user: "User", message: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Response Data:", data);
+                if (data.response) {
+                    addMessage(data.response, "bot");
+                } else {
+                    addMessage("⚠️ لم أتمكن من توليد رد.", "error");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                addMessage("⚠️ فشل الاتصال بالخادم!", "error");
+            })
+            .finally(() => {
+                // إعادة تفعيل الكتابة بعد استلام الرد
+                isWaitingForResponse = false;
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                loadingDiv.style.display = "none";
+                userInput.focus();
+            });
+        }
+    });
+    
+    userInput.addEventListener("keypress", (event) => {
+        if (isWaitingForResponse) {
+            event.preventDefault(); // منع الكتابة أثناء الانتظار
+        } else if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendBtn.click();
+        }
     });
 }
-
-function toggleSendButton(isWaiting) {
-    const button = document.getElementById("send-button");
-    button.disabled = isWaiting;
-    button.innerText = isWaiting ? "انتظر..." : "إرسال";
-}
-
+// دالة إضافة الرسالة
 function addMessage(text, className, align) {
     const chatBox = document.getElementById("chat-box");
     const messageDiv = document.createElement("div");
     messageDiv.className = `${className} chat-bubble ${align}`;
     messageDiv.innerHTML = text;
     chatBox.appendChild(messageDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
+    scrollToBottom();
 }
 
+// حفظ المحادثات في Local Storage
+function saveMessageToLocalStorage(message, sender) {
+    let chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
+    chatHistory.push({ sender: sender, message: message, timestamp: new Date().toISOString() });
+    localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+}
+
+// تحميل المحادثات السابقة
 function loadChatHistory() {
-    fetch("http://127.0.0.1:5000/chat?user=" + username)
-        .then(response => response.json())
-        .then(data => {
-            data.history.forEach(chat => {
-                addMessage(chat.message, "user-message", "right");
-                addMessage(chat.response, "bot-message", "left");
-            });
-        });
-}
-document.addEventListener("DOMContentLoaded", function () {
-    const chatBox = document.getElementById("chat-box");
-    const username = localStorage.getItem("username") || "default_user"; // استرجاع اسم المستخدم
-
-    // 🔹 جلب المحادثات السابقة عند تحميل الصفحة
-    fetch("http://localhost:5000/chat_history", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ user: username })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.history) {
-            data.history.forEach(chat => {
-                appendMessage("user", chat.message);
-                appendMessage("ai", chat.response);
-            });
+    const chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
+    chatHistory.forEach(chat => {
+        if (chat.sender === "user") {
+            addMessage(chat.message, "user-message", "right");
+        } else if (chat.sender === "bot") {
+            addMessage(chat.message, "bot-message", "left");
         }
-    })
-    .catch(error => console.error("❌ فشل تحميل المحادثات السابقة:", error));
-});
-
-// 🔹 دالة إضافة الرسائل إلى المحادثة
-function appendMessage(sender, text) {
-    const chatBox = document.getElementById("chat-box");
-    const messageDiv = document.createElement("div");
-    messageDiv.classList.add("message", sender);
-    messageDiv.textContent = text;
-    chatBox.appendChild(messageDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-document.addEventListener("DOMContentLoaded", function () {
-    loadChatHistory();
-});
-
-function sendMessage() {
-    let userInput = document.getElementById("user-input").value.trim();
-    if (!userInput) return;
-
-    displayMessage(userInput, "user-message"); // عرض رسالتك باللون الأزرق
-
-    fetch("http://127.0.0.1:5000/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: "user", message: userInput }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.response) {
-            displayMessage(data.response, "ai-message"); // عرض رد الذكاء الاصطناعي باللون الأبيض
-        }
-        document.getElementById("user-input").value = ""; // تفريغ الحقل بعد الإرسال
-    })
-    .catch(error => console.error("❌ حدث خطأ:", error));
-}
-
-function displayMessage(text, className) {
-    let chatBox = document.getElementById("chat-box");
-    let messageDiv = document.createElement("div");
-    messageDiv.classList.add("message", className);
-    messageDiv.textContent = text;
-    chatBox.appendChild(messageDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-function loadChatHistory() {
-    fetch("http://127.0.0.1:5000/chat_history", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: "user" }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.history) {
-            data.history.forEach(chat => {
-                displayMessage(chat.message, "user-message");
-                displayMessage(chat.response, "ai-message");
-            });
-        }
-    })
-    .catch(error => console.error("❌ خطأ في تحميل المحادثة:", error));
-}
-document.addEventListener("DOMContentLoaded", () => {
-    const chatBox = document.getElementById("chat-box");
-    const userInput = document.getElementById("user-input");
-    const sendBtn = document.getElementById("send-btn");
-    
-    function addMessage(text, isUser) {
-        const messageDiv = document.createElement("div");
-        messageDiv.classList.add("chat-bubble", isUser ? "user-message" : "bot-message");
-        messageDiv.textContent = text;
-        chatBox.appendChild(messageDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    sendBtn.addEventListener("click", async () => {
-        const message = userInput.value.trim();
-        if (!message) return;
-
-        addMessage(message, true);
-        userInput.value = "";
-
-        const response = await fetch("http://127.0.0.1:5000/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user: "User", message })
-        });
-
-        const data = await response.json();
-        if (data.response) addMessage(data.response, false);
     });
-});
+}
+
+// تفعيل/إلغاء تفعيل زر الإرسال
+function toggleSendButton(isWaiting) {
+    const button = document.getElementById("send-btn");
+    if (isWaiting) {
+        button.disabled = true;
+        button.innerText = "انتظر...";
+    } else {
+        button.disabled = false;
+        button.innerText = "إرسال";
+    }
+}
+
+// دالة للتمرير لآخر الرسائل
+function scrollToBottom() {
+    const chatBox = document.getElementById("chat-box");
+    chatBox.scrollTop = chatBox.scrollHeight;
+}

@@ -7,20 +7,84 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <div class="chat-container">
+        <div class="chat-box" id="chat-box">
+            <div class="message direction-rtl"></div>
 
-<div class="chat-container">
-    <div class="chat-header">
-        🤖 الدردشة الذكية
-        
-    </div>
-    <div class="chat-box" id="chat-box"></div>
-    <div class="chat-input">
-        <input type="text" id="user-input" placeholder="اكتب رسالتك هنا..." onkeydown="handleKeyDown(event)">
-        <button id="send-button" onclick="sendMessage()">إرسال</button>
-    </div>
-</div>
+            <!-- سيتم إضافة الرسائل هنا ديناميكيًا -->
+        </div>
+        <div class="input-container">
+            <textarea id="user-input" placeholder="اكتب هنا..."></textarea>
+            <div class="message direction-rtl"></div>
 
-<script src="script.js"></script>
+            <button id="send-btn">إرسال</button>
+        </div>
+    </div>
+
+    <script>
+        const serverUrl = "http://127.0.0.1:8080/send"; // تعديل المسار ليتوافق مع السيرفر
+        const chatBox = document.getElementById("chat-box");
+        const userInput = document.getElementById("user-input");
+        const sendBtn = document.getElementById("send-btn");
+
+        window.onload = function() {
+            const savedChat = localStorage.getItem("chatHistory");
+            if (savedChat) {
+                chatBox.innerHTML = savedChat;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+
+        function saveChat() {
+            localStorage.setItem("chatHistory", chatBox.innerHTML);
+        }
+
+        function addMessage(content, sender = "user") {
+            const messageBubble = document.createElement("div");
+            messageBubble.classList.add("message-bubble", sender);
+            messageBubble.innerHTML = content;
+            chatBox.appendChild(messageBubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            saveChat();
+        }
+
+        sendBtn.addEventListener("click", () => {
+            const message = userInput.value.trim();
+            if (message) {
+                addMessage(message, "user");
+                userInput.value = "";
+
+                fetch(serverUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ user: "User", message: message }) // إضافة اسم المستخدم الافتراضي
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Response Data:", data); // إضافة Log للتصحيح
+                    if (data.response) {
+                        addMessage(data.response, "bot");
+                    } else {
+                        addMessage("⚠️ لم أتمكن من توليد رد.", "error");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    addMessage("⚠️ فشل الاتصال بالخادم!", "error");
+                });
+            }
+        });
+
+        userInput.addEventListener("keypress", (event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                sendBtn.click();
+            }
+        });
+    </script>
+    <div id="loading" style="display: none;">... جاري التحميل</div>
 
 </body>
 </html>
