@@ -5,6 +5,8 @@ import requests
 import os
 from dotenv import load_dotenv
 from waitress import serve
+from flask import Flask, render_template
+
 
 # 🔑 تحميل مفتاح API
 load_dotenv()
@@ -167,7 +169,7 @@ def generate_gemini_response(user_message, chat_history=[]):
 # 🔹 نقطة نهاية لإرسال الرسالة
 @app.route('/')
 def home():
-    return "Hello, Render!"
+    return render_template('index.html')
 
 @app.route('/send', methods=['POST'])
 def send_message():
