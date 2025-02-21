@@ -210,7 +210,51 @@ def send_message():
     except Exception as e:
         print(f"❌ خطأ أثناء معالجة الطلب: {e}")
         return jsonify({"error": "❌ حدث خطأ أثناء معالجة الطلب"}), 500
+@app.route('/save_info', methods=['POST'])
+def save_info():
+    data = request.get_json()
+    key = data.get("key", "").strip().lower()
+    value = data.get("value", "").strip()
 
+    if not key or not value:
+        return jsonify({"error": "❌ يجب إدخال المفتاح والقيمة!"}), 400
+
+    save_general_info(key, value)
+    return jsonify({"message": f"✅ تم حفظ المعلومات: {key} = {value}"})
+
+
+
+# 🔹 نقطة نهاية لجلب المحادثات السابقة
+@app.route('/chat_history', methods=['POST'])
+def chat_history():
+    data = request.get_json()
+    user_message = data.get('message')
+    # هنا ضع منطق الذكاء الاصطناعي للرد
+    response = {"reply": "تم استقبال رسالتك: " + user_message}
+    return jsonify(response)
+
+# 🔹 دالة لحفظ المعلومات العامة
+def save_general_info(key, value):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS general_info (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            key TEXT UNIQUE NOT NULL,
+            value TEXT NOT NULL
+        )
+    ''')
+    cursor.execute("INSERT OR REPLACE INTO general_info (key, value) VALUES (?, ?)", (key, value))
+    conn.commit()
+    conn.close()
+# 🔹 دالة لاسترجاع المعلومات العامة
+def get_general_info(key):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM general_info WHERE key = ?", (key,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else None
 # 🚀 تشغيل السيرفر
 if __name__ == '__main__':
     serve(app, host="0.0.0.0", port=5000)
