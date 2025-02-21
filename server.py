@@ -165,6 +165,10 @@ def generate_gemini_response(user_message, chat_history=[]):
 
 # 🔹 نقطة نهاية لإرسال الرسالة
 # 🔹 نقطة نهاية لإرسال الرسالة
+@app.route('/')
+def home():
+    return "Hello, Render!"
+
 @app.route('/send', methods=['POST'])
 def send_message():
     try:
