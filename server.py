@@ -17,12 +17,13 @@ if not GEMINI_API_KEY:
 # 🚀 إعداد التطبيق
 app = Flask(__name__)
 CORS(app)
-app.secret_key = os.urandom(24)  # مفتاح سري للجلسات
 
 # ✅ إعدادات الجلسة
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_PERMANENT'] = False  # الجلسة لا تنتهي بعد غلق المتصفح
-app.config['SESSION_USE_SIGNER'] = True  # توقيع الجلسة لمزيد من الأمان
+app.secret_key = os.urandom(24)  # مفتاح سري للجلسات
+app.config['SESSION_TYPE'] = 'filesystem'  # تخزين الجلسات في ملفات
+app.config['SESSION_PERMANENT'] = False    # الجلسة لا تنتهي بعد غلق المتصفح
+app.config['SESSION_USE_SIGNER'] = True    # توقيع الجلسة لمزيد من الأمان
+app.config['SESSION_FILE_DIR'] = "./flask_session"  # مجلد لتخزين ملفات الجلسات
 Session(app)
 
 DB_PATH = "chat_history.db"
@@ -184,7 +185,7 @@ def styles():
     return send_from_directory(os.getcwd(), 'styles.css')
 
 @app.route('/chat_history.db')
-def get0_chat_history():
+def get_chat_history_db():
     return send_from_directory(os.getcwd(), 'chat_history.db')
 
 @app.route('/send', methods=['POST'])
@@ -209,32 +210,6 @@ def send_message():
     except Exception as e:
         print(f"❌ خطأ أثناء معالجة الطلب: {e}")
         return jsonify({"error": "❌ حدث خطأ أثناء معالجة الطلب"}), 500
-
-@app.route('/save_info', methods=['POST'])
-def save_info():
-    data = request.get_json()
-    key = data.get("key", "").strip().lower()
-    value = data.get("value", "").strip()
-
-    if not key or not value:
-        return jsonify({"error": "❌ يجب إدخال المفتاح والقيمة!"}), 400
-
-    save_general_info(key, value)
-    return jsonify({"message": f"✅ تم حفظ المعلومات: {key} = {value}"})
-
-def save_general_info(key, value):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS general_info (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            key TEXT UNIQUE NOT NULL,
-            value TEXT NOT NULL
-        )
-    ''')
-    cursor.execute("INSERT OR REPLACE INTO general_info (key, value) VALUES (?, ?)", (key, value))
-    conn.commit()
-    conn.close()
 
 # 🚀 تشغيل السيرفر
 if __name__ == '__main__':
