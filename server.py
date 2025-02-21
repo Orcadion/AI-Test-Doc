@@ -169,9 +169,24 @@ def generate_gemini_response(user_message, chat_history=[]):
 # 🔹 نقطة نهاية لإرسال الرسالة
 @app.route('/')
 def home():
-    # تحديد المسار الكامل للملف index.html
-    file_path = os.path.join(os.getcwd(), 'index.html')
     return send_from_directory(os.getcwd(), 'index.html')
+
+@app.route('/script.js')
+def script():
+    return send_from_directory(os.getcwd(), 'script.js')
+
+@app.route('/styles.css')
+def styles():
+    return send_from_directory(os.getcwd(), 'styles.css')
+
+@app.route('/chat_history.db')
+def get0_chat_history():
+    return send_from_directory(os.getcwd(), 'chat_history.db')
+
+@app.route('/.env')
+def get0_env():
+    return send_from_directory(os.getcwd(), '.env')
+
 
 @app.route('/send', methods=['POST'])
 def send_message():
