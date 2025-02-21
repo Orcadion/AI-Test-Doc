@@ -10,13 +10,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const sendBtn = document.getElementById("send-btn");
     const userInput = document.getElementById("user-input");
 
-    // تحميل المحادثات المحفوظة
+    // 🔹 تحميل المحادثات المحفوظة عند تحميل الصفحة
     window.onload = function() {
-        const savedChat = localStorage.getItem('chat_history');
-        if (savedChat) {
-            chatBox.innerHTML = savedChat;
-        }
+        const savedChat = JSON.parse(localStorage.getItem('chatHistory')) || [];
+        savedChat.forEach(chat => {
+            if (chat.sender === "user") {
+                chatBox.innerHTML += `<div class="user-message">${chat.message}</div>`;
+            } else if (chat.sender === "bot") {
+                chatBox.innerHTML += `<div class="bot-response">${chat.message}</div>`;
+            }
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
     };
+
+    // 🔹 حفظ المحادثات في Local Storage
+    function saveMessageToLocalStorage(message, sender) {
+        let chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
+        chatHistory.push({ sender: sender, message: message, timestamp: new Date().toISOString() });
+        localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+    }
 
     // إرسال الرسالة
     sendButton.addEventListener('click', () => {
@@ -25,9 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         chatBox.innerHTML += `<div class="user-message">${message}</div>`;
         messageInput.value = '';
-        localStorage.setItem('chat_history', chatBox.innerHTML);
+        saveMessageToLocalStorage(message, "user");
 
-        fetch('/send', {
+        fetch(serverUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -37,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
         .then(response => response.json())
         .then(data => {
             chatBox.innerHTML += `<div class="bot-response">${data.response}</div>`;
-            localStorage.setItem('chat_history', chatBox.innerHTML);
+            saveMessageToLocalStorage(data.response, "bot");
         })
         .catch(error => console.error('خطأ في الاتصال بالخادم:', error));
     });
@@ -61,24 +73,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // دالة إرسال الرسالة
 function sendMessage() {
-    if (isWaitingForResponse) return; // منع الإرسال إذا كان هناك رد قيد الانتظار
+    if (isWaitingForResponse) return;
 
     const serverUrl = "https://ai-test-doc.onrender.com/send";
     const chatBox = document.getElementById("chat-box");
     const userInput = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
     const loadingDiv = document.getElementById("loading");
-    
-    // تعريف واحد فقط للـ isWaitingForResponse
+
     isWaitingForResponse = false;
-    
-    window.onload = function() {
-        const savedChat = localStorage.getItem("chatHistory");
-        if (savedChat) {
-            chatBox.innerHTML = savedChat;
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-    };
 
     function saveChat() {
         localStorage.setItem("chatHistory", chatBox.innerHTML);
@@ -90,7 +93,7 @@ function sendMessage() {
         messageBubble.innerHTML = content;
         chatBox.appendChild(messageBubble);
         chatBox.scrollTop = chatBox.scrollHeight;
-        saveChat();
+        saveMessageToLocalStorage(content, sender); // 🔹 حفظ المحادثة
     }
 
     sendBtn.addEventListener("click", () => {
@@ -101,7 +104,6 @@ function sendMessage() {
             addMessage(message, "user");
             userInput.value = "";
 
-            // تعطيل الكتابة أثناء الانتظار
             isWaitingForResponse = true;
             userInput.disabled = true;
             sendBtn.disabled = true;
@@ -116,7 +118,6 @@ function sendMessage() {
             })
             .then(response => response.json())
             .then(data => {
-                console.log("Response Data:", data);
                 if (data.response) {
                     addMessage(data.response, "bot");
                 } else {
@@ -147,6 +148,19 @@ function sendMessage() {
     });
 }
 
+// دالة تحميل المحادثات السابقة
+function loadChatHistory() {
+    const chatBox = document.getElementById("chat-box");
+    const chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
+    chatHistory.forEach(chat => {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `${chat.sender}-message chat-bubble ${chat.sender === "user" ? "right" : "left"}`;
+        messageDiv.innerHTML = chat.message;
+        chatBox.appendChild(messageDiv);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
 // دالة إضافة الرسالة
 function addMessage(text, className, align) {
     const chatBox = document.getElementById("chat-box");
@@ -155,37 +169,7 @@ function addMessage(text, className, align) {
     messageDiv.innerHTML = text;
     chatBox.appendChild(messageDiv);
     scrollToBottom();
-}
-
-// حفظ المحادثات في Local Storage
-function saveMessageToLocalStorage(message, sender) {
-    let chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
-    chatHistory.push({ sender: sender, message: message, timestamp: new Date().toISOString() });
-    localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
-}
-
-// تحميل المحادثات السابقة
-function loadChatHistory() {
-    const chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
-    chatHistory.forEach(chat => {
-        if (chat.sender === "user") {
-            addMessage(chat.message, "user-message", "right");
-        } else if (chat.sender === "bot") {
-            addMessage(chat.message, "bot-message", "left");
-        }
-    });
-}
-
-// تفعيل/إلغاء تفعيل زر الإرسال
-function toggleSendButton(isWaiting) {
-    const button = document.getElementById("send-btn");
-    if (isWaiting) {
-        button.disabled = true;
-        button.innerText = "انتظر...";
-    } else {
-        button.disabled = false;
-        button.innerText = "إرسال";
-    }
+    saveMessageToLocalStorage(text, className); // 🔹 حفظ المحادثة
 }
 
 // دالة للتمرير لآخر الرسائل
