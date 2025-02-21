@@ -24,6 +24,7 @@
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     
     <script>
+        
         const serverUrl = "http://127.0.0.1:8080/send"; // تعديل المسار ليتوافق مع السيرفر
         const chatBox = document.getElementById("chat-box");
         const userInput = document.getElementById("user-input");
@@ -85,6 +86,7 @@
                 sendBtn.click();
             }
         });
+        src="/script.js"
     </script>
     <div id="loading" style="display: none;">... جاري التحميل</div>
 
