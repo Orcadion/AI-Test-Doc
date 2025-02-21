@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الدردشة الذكية</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="script.js"></script>
+    
 </head>
 <body>
     <div class="chat-container">
@@ -25,7 +27,7 @@
     
     <script>
         
-        const serverUrl = "http://127.0.0.1:8080/send"; // تعديل المسار ليتوافق مع السيرفر
+        const serverUrl = "http://127.0.0.1:5000/send"; // تعديل المسار ليتوافق مع السيرفر
         const chatBox = document.getElementById("chat-box");
         const userInput = document.getElementById("user-input");
         const sendBtn = document.getElementById("send-btn");
@@ -86,7 +88,6 @@
                 sendBtn.click();
             }
         });
-        src="/script.js"
     </script>
     <div id="loading" style="display: none;">... جاري التحميل</div>
 
