@@ -5,3 +5,4 @@ dotenv
 waitress
 Flask==2.3.3
 SQLAlchemy
+Flask-Session
